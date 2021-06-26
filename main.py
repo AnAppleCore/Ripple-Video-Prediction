@@ -9,7 +9,7 @@ import torch.optim as optim
 
 from PIL import Image
 from model import RippleHeight
-from dataset import RippleVideoDataset, get_dataloader
+from dataset import get_dataloader
 from utils import train, validate, predict, plot_curves
 
 def get_args():
@@ -22,6 +22,7 @@ def get_args():
     parser.add_argument('-p', '--predict', action='store_true')
     parser.add_argument('--weights', type = str, default = None)
     parser.add_argument('--num_workers', type = int, default = 4)
+    parser.add_argument('--frame_cnt', type = int, default = 100)
     parser.add_argument('--pin_memory', type = bool, default = True)
     parser.add_argument('--img_name', type = str, default = '0.png')
     parser.add_argument('--save_path', type = str, default = './output')
@@ -29,11 +30,9 @@ def get_args():
     args = parser.parse_args()
     print('Arguments:', args)
     # Create results directory
-    if not os.path.isdir(args.save_path):
-        os.makedirs(args.save_path + '/videos')
-        os.makedirs(args.save_path + '/images')
     if not os.path.isdir(args.save_path+'/videos/'+args.img_name.split('.')[0]):
         os.makedirs(args.save_path+'/videos/'+args.img_name.split('.')[0])
+    if not os.path.isdir(args.save_path+'/images/'+args.img_name.split('.')[0]):
         os.makedirs(args.save_path+'/images/'+args.img_name.split('.')[0])
     return args
 
@@ -41,8 +40,7 @@ def main():
     args = get_args()
 
     # data loading
-    dataset = RippleVideoDataset(img_name='6.png')
-    train_loader = get_dataloader(dataset, args)
+    train_loader = get_dataloader(args)
 
     # model initialization
     model = RippleHeight(in_channels=3, out_channels=1)
@@ -118,11 +116,6 @@ def main():
     time_elapsed = time.time() - start
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
     # plot_curves(metrics, args)
-
-    checkpoint = torch.load(best_path)
-    model.load_state_dict(checkpoint['model_state_dict'], strict=True)
-    print('Loaded best model weights (epoch {}) from {}'.format(checkpoint['epoch'], best_path))
-    # predict()
 
 if __name__ == '__main__':
     main()

@@ -52,5 +52,6 @@ def main():
     h = model(x)
     print(x.shape, h.shape)
 
+
 if __name__ == '__main__':
     main()

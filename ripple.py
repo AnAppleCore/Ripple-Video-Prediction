@@ -1,13 +1,10 @@
+import os
 import cv2
+import random
 import numpy as np
 import taichi as ti
 
-# taichi initilization with cuda (could be replaced by GPU)
-
-ti.init(arch=ti.cuda)
-
-# basic parameter settings
-
+# basic parameter default settings
 dx = 0.02
 dt = 0.02
 kappa = 2
@@ -15,8 +12,12 @@ depth = 4
 gamma = 0.
 eta = 1.333
 margin = 200
+frame_cnt = 100
 light_color = 1
 shape = (256, 256)
+
+# taichi initilization with cuda (could be replaced by GPU)
+ti.init(arch=ti.cuda)
 height = ti.field(dtype=float, shape=shape)
 velocity = ti.field(dtype=float, shape=shape)
 pixels = ti.field(dtype=float, shape=(*shape, 3))
@@ -106,26 +107,26 @@ def paint():
         # pixels[i, j, c] = fr * light_color
 
 
-def RippleGenerator(img_name, background_img, frame_cnt):
+def RippleGenerator(background_img, img_save_path):
     '''
-        Water Ripple video generator using taichi
+        Water Ripple video generator using taichi. Store the result video in output directory
         @param:
         `background_img`: background image with pixel value in (0, 1)
         `framc_cnt`: number of frames in the generated wave
         @return:
         `frames`: list contains all the frames of the video, each frame is of dtype np.uint8
-        `heights`: list containes the height field of all frames, each height is of dtype np.float32
+        `heights`: list containes the height masks of all frames, each height mask is of dtype np.float32
     '''
 
     # initialization
     frames, heights = [], []
-    gui = ti.GUI('Water Wave', shape)
+    gui = ti.GUI(img_save_path, shape)
     background_img = background_img / 255. # convert to (0, 1)
     background.from_numpy(background_img)
-    writer = cv2.VideoWriter('./output/videos/'+img_name.split('.')[0]+'/ripple_raw.avi', cv2.VideoWriter_fourcc('M','J','P','G'), 25, shape[::-1])
+    writer = cv2.VideoWriter(img_save_path+'/ripple_raw.avi', cv2.VideoWriter_fourcc('M','J','P','G'), 25, shape[::-1])
 
     t = 0
-    print('    Frame #     shape           max     min')
+    origin_touched = False
     while t < frame_cnt + margin:
         t += 1
 
@@ -137,7 +138,14 @@ def RippleGenerator(img_name, background_img, frame_cnt):
                 reset()
             elif e.key == ti.GUI.LMB:
                 x, y = e.pos
+                origin_touched = True
                 touch_at(3, x * shape[0], y * shape[1])
+
+        if not origin_touched:
+            x = random.random()
+            y = random.random()
+            origin_touched = True
+            touch_at(3, x * shape[0], y * shape[1])
 
         # update height and paint image
         update()
@@ -150,8 +158,7 @@ def RippleGenerator(img_name, background_img, frame_cnt):
             frames.append(frame)
             writer.write(frame)
             if (t-margin) % 10 == 0:
-                print('[{:>4}/{:>4}]\t{}\t{}\t{}'.format(t-margin, frame_cnt, frame.shape, frame.max(), frame.min()))
-                print('({:>4}/{:>4})\t{}\t{:.4f}\t{:.4f}'.format(t-margin, frame_cnt, height_mask.shape, height_mask.max(), height_mask.min()))
+                print('[{:>4}/{:>4}]\t{}\t{}\t{}\t{}\t{:.4f}\t{:.4f}'.format(t-margin, frame_cnt, frame.shape, frame.max(), frame.min(), height_mask.shape, height_mask.max(), height_mask.min()))
 
         # visualization
         cv2.imshow("show", frame)
@@ -160,14 +167,41 @@ def RippleGenerator(img_name, background_img, frame_cnt):
 
     cv2.destroyAllWindows()
     writer.release()
-    return frames, heights
+    reset()
+
+    # store the results
+    frames = np.array(frames)
+    heights = np.array(heights)
+    # print(frames.shape, frames.dtype)
+    # print(heights.shape, heights.dtype)
+    np.save(img_save_path+'/frames.npy', frames)
+    np.save(img_save_path+'/heights.npy', heights)
+
+
+def RippleVideoPreparation(img_dir='./images', save_path='./output'):
+    '''
+        Generate the ripple videos, frames and height masks, store them as dataset
+        @param:
+        `save_path`: directory where to save data
+        `img_dir`: directory where the base images are stored
+    '''
+    for img_name in os.listdir(img_dir):
+        img = cv2.imread(img_dir + '/' + img_name)
+        img = cv2.resize(img, shape[::-1])
+        img_save_path = save_path + '/videos/'+img_name.split('.')[0]
+        if not os.path.isdir(img_save_path):
+            os.makedirs(img_save_path)
+        print('------Ripple video over image: {} generation------'.format(img_name))
+        RippleGenerator(img, img_save_path)
+    print('Ripple dataset generated from {} is stored in {}'.format(img_dir, save_path))
+
 
 def main():
-    # test RippleGenerator
-    img = np.ones(shape=(256, 256, 3), dtype=np.float32)
-    frames, heights = RippleGenerator('test.jpg',img, frame_cnt=100)
-    assert len(frames) == len(heights), 'frames/height maps num error'
-    print('frame num', len(frames))
+    '''
+        Safely execute this script to create the dataset with default setting
+    '''
+    RippleVideoPreparation(img_dir='./images', save_path='./output')
+
 
 if __name__=='__main__':
     main()

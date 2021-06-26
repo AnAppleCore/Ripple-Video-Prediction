@@ -14,6 +14,7 @@ class Metrics(object):
         self.cnt += n
         self.avg = self.sum / self.cnt
 
+
 def train(train_loader, model, loss_func, optimizer, scheduler, epoch, args):
 
     train_loss = Metrics()
@@ -55,8 +56,10 @@ def train(train_loader, model, loss_func, optimizer, scheduler, epoch, args):
 def validate():
     pass
 
+
 def predict():
     pass
+
 
 def plot_curves():
     pass

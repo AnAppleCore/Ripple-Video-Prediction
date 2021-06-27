@@ -180,7 +180,7 @@ def RippleGenerator(background_img, img_save_path):
 
 def RippleVideoPreparation(img_dir='./images', save_path='./output'):
     '''
-        Generate the ripple videos, frames and height masks, store them as dataset
+        Generate the ripple videos, frames and height masks, store them as dataset (both train and val)
         @param:
         `save_path`: directory where to save data
         `img_dir`: directory where the base images are stored
@@ -190,9 +190,11 @@ def RippleVideoPreparation(img_dir='./images', save_path='./output'):
         img = cv2.resize(img, shape[::-1])
         img_save_path = save_path + '/videos/'+img_name.split('.')[0]
         if not os.path.isdir(img_save_path):
-            os.makedirs(img_save_path)
+            os.makedirs(img_save_path+'/train')
+            os.makedirs(img_save_path+'/val')
         print('------Ripple video over image: {} generation------'.format(img_name))
-        RippleGenerator(img, img_save_path)
+        RippleGenerator(img, img_save_path+'/train')
+        RippleGenerator(img, img_save_path+'/val')
     print('Ripple dataset generated from {} is stored in {}'.format(img_dir, save_path))
 
 

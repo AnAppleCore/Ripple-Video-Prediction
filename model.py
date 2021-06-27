@@ -47,7 +47,7 @@ class RippleHeight(nn.Module):
 
 def main():
     # test RippleHeight model
-    x = torch.randn((4, 3, 256, 256), dtype=torch.float32) # (batch, in_c, h, w)
+    x = torch.randn((4, 3, 256, 256), dtype=torch.float32) # (batch, c, h, w)
     model = RippleHeight()
     h = model(x)
     print(x.shape, h.shape)

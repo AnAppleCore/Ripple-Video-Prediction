@@ -7,7 +7,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
-from PIL import Image
 from model import RippleHeight
 from dataset import get_dataloader
 from utils import train, validate, predict, plot_curves
@@ -21,12 +20,12 @@ def get_args():
     parser.add_argument('-r', '--learning_rate', type = float, default = 1e-2)
     parser.add_argument('-p', '--predict', action='store_true')
     parser.add_argument('--weights', type = str, default = None)
-    parser.add_argument('--num_workers', type = int, default = 4)
+    parser.add_argument('--num_workers', type = int, default = 0)
     parser.add_argument('--frame_cnt', type = int, default = 100)
     parser.add_argument('--pin_memory', type = bool, default = True)
     parser.add_argument('--img_name', type = str, default = '0.png')
     parser.add_argument('--save_path', type = str, default = './output')
-    parser.add_argument('--img_shape', nargs='+', type=int, default=[256, 256])
+    parser.add_argument('--img_shape', nargs='+', type=int, default=(256, 256))
     args = parser.parse_args()
     print('Arguments:', args)
     # Create results directory
@@ -40,7 +39,7 @@ def main():
     args = get_args()
 
     # data loading
-    train_loader = get_dataloader(args)
+    train_loader, val_loader = get_dataloader(args)
 
     # model initialization
     model = RippleHeight(in_channels=3, out_channels=1)
@@ -53,7 +52,9 @@ def main():
     start_epoch = 0
     metrics = {
         'train_loss': [],
-        'train_acc': []
+        'train_acc': [],
+        'val_loss': [],
+        'val_acc': []
     }
     best_path = args.save_path + '/best_model.pth.tar'
 
@@ -77,10 +78,10 @@ def main():
 
     # generating log file
     with open(args.save_path + '/model_log.csv', 'a') as log:
-        log.write('epoch, train_loss, train_acc\n')
+        log.write('epoch, train_loss, val loss, train_acc, val acc\n')
 
     start = time.time()
-    for epoch in range(start_epoch, args.epoch):
+    for epoch in range(start_epoch, args.epochs):
 
         # trainning
         print('------Training------')
@@ -91,31 +92,40 @@ def main():
         metrics['train_acc'].append(train_acc)
         print('Train epoch {} complete! train loss: {:.4f}, acc {:.4f}'.format(epoch, train_loss, train_acc))
 
+        # validating
+        print('------Validating------')
+        val_loss, val_acc = validate(val_loader, model, loss_func, epoch, args)
+
+        # update metrics
+        metrics['val_loss'].append(val_loss)
+        metrics['val_acc'].append(val_acc)
+        print('Validate epoch {} complete! val loss: {:.4f}, acc {:.4f}'.format(epoch, val_loss, val_acc))
+
         # write log
         with open(args.save_path + '/model_log.csv', 'a') as log:
-            log.write('{}, {:.5f}, {:.5f}\n'.format(epoch, train_loss, train_acc))
+            log.write('{}, {:.5f}, {:.5f}, {:.5f}, {:.5f}\n'.format(epoch, train_loss, val_loss, train_acc, val_acc))
 
         # save checkpoint
         torch.save({
-            'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
+            'model_state_dict': model.state_dict(),
             'best_acc': best_acc,
             'metrics': metrics,
             'epoch': epoch,
         }, args.save_path + '/checkpoint.pth.tar')
 
         # save best model
-        if train_acc > best_acc:
-            print('train acc improved from {:4f} to {:4f}.'.format(best_acc, train_acc))
-            best_acc = train_acc
+        if val_acc > best_acc:
+            print('val acc improved from {:.4f} to {:.4f}.'.format(best_acc, val_acc))
+            best_acc = val_acc
             torch.save({
                 'epoch': epoch,
                 'model_state_dict': model.state_dict()
             }, best_path)
 
     time_elapsed = time.time() - start
-    print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
-    # plot_curves(metrics, args)
+    print('Train and Val process completes in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
+    plot_curves(metrics, args)
 
 if __name__ == '__main__':
     main()

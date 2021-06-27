@@ -12,10 +12,9 @@ This net takes one frame from ripple video as input, then predict the height fie
 
 Try to run the above command, the default trainning process is triggered.
 
-![Network](https://github.com/AnAppleCore/Ripple-Video-Prediction/blob/main/output/network.JPG)
-
 ## Results
 
 Here's the architecture and training curve of image `0.png`, as well as some intermediate figures. (All can be found in folder `./output`)
+![Network](https://github.com/AnAppleCore/Ripple-Video-Prediction/blob/main/output/network.JPG)
 ![Learning curves](https://github.com/AnAppleCore/Ripple-Video-Prediction/blob/main/output/learning_curve_0.png)
 ![Intermediate results](https://github.com/AnAppleCore/Ripple-Video-Prediction/blob/main/output/prediction_results.png)
